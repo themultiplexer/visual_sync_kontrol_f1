@@ -1,18 +1,24 @@
+
 #include <stdio.h> 
+#include <thread>
 #include <wchar.h> 
 #include <hidapi.h>
+#include <ranges>
+#include <chrono>
+#include <iostream>
+#include <string>
 
 #define MAX_STR 255
 
-
-void setLED(hid_device *handle, bool on) {
+// TODO this does not work yet.
+// Maybe play around with written bytes (length)
+void setLED(hid_device *handle, int i, bool on) {
 	int res;
-	unsigned char buf[65];
-	// Toggle LED (cmd 0x80). The first byte is the report number (0x0).
-	buf[0] = 0x0;
-	buf[1] = 0x80;
-	res = hid_write(handle, buf, 65);
+	unsigned char buf[80] = { 0 };
+	buf[i] = on ? 127 : 0;
+	res = hid_write(handle, buf, 80);
 }
+
 
 int main(int argc, char* argv[])
 {
@@ -50,7 +56,12 @@ int main(int argc, char* argv[])
 	res = hid_get_indexed_string(handle, 1, wstr, MAX_STR);
 	printf("Indexed String 1: %ls\n", wstr);
 
-	setLED(handle, true);
+	for (int i = 0; i < 80; i++) {
+		setLED(handle, i, true);
+		std::this_thread::sleep_for(std::chrono::milliseconds(100)); 
+		setLED(handle, i, false);
+		std::this_thread::sleep_for(std::chrono::milliseconds(500)); 
+	}
 
 	while (true) {
 		unsigned char buf[22];
@@ -58,6 +69,7 @@ int main(int argc, char* argv[])
 		res = hid_read(handle, buf, 22);
 
 		// Print out the returned buffer.
+		// TODO Here you should check for patterns(buttons)
 		for (i = 0; i < 22; i++) {
 			printf("buf[%d]: %d\n", i, buf[i]);
 		}
